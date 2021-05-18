@@ -12,8 +12,9 @@ class Configs(object):
 
         cfg = Config(kwarg_dict)
             with kwarg_dict, a dict of attribute keywords
-            and corresponding arguments, the available attributes
-            are listed as below
+            and corresponding arguments,
+
+            the available attributes are listed as below
 
     Attributes
     ----------
