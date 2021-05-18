@@ -14,7 +14,7 @@ class Configs(object):
             with kwarg_dict, a dict of attribute keywords
             and corresponding arguments,
 
-            the available attributes are listed as below
+            the available attributes are listed as below.
 
     Attributes
     ----------
