@@ -4,7 +4,17 @@ import torch.nn.functional as F
 
 
 class Trainer(nn.Module):
-    # TODO: write DocStrings
+    """
+    The trainer of the frf-net.
+
+    This should be instantiated like this:
+
+        trainer = Trainer(configs, model)
+            where configs is an instance of config.Configs and
+            model is an instance of fl_densenet.FullyLinearDenseNet.
+
+    """
+
     def __init__(self, configs, model):
         super(Trainer, self).__init__()
         self._configs = configs
@@ -12,19 +22,23 @@ class Trainer(nn.Module):
         self._optimizer = None
 
     def train_step(self, target, data):
+        """Take a train step."""
         self._optimizer.zero_grad()
         output = self._model(data)
         if self._configs.multi_label > 1:
-            # todo: use other loss function?
-            loss_func = nn.BCELoss()
-            loss = loss_func(output, target)
+            loss = F.binary_cross_entropy_with_logits(output, target)
+            with torch.no_grad():
+                output = F.sigmoid(output)
         else:
-            loss = F.nll_loss(output, target)
+            loss = F.cross_entropy(output, target)
+            with torch.no_grad():
+                output = F.log_softmax(output, dim=1)
         loss.backward()
         self._optimizer.step()
         return output, loss
 
     def adjust_lr(self):
+        """Adjust learning rate by multiplying lr_decay_rate in configs."""
         configs = self._configs
         old_lr = configs.lr
         configs.lr *= configs.lr_decay_rate
@@ -34,17 +48,16 @@ class Trainer(nn.Module):
               .format(old_lr, configs.lr))
 
     def get_optimizer(self):
+        """Get optimizer for the trainer."""
         configs = self._configs
         model = self._model
 
-        optimizer = torch.optim.SGD(model.parameters(),
-                                    lr=configs.lr,
-                                    momentum=0.9,
-                                    weight_decay=configs.weight_decay)
-
         if configs.optimizer_type == 'SGD':
-            pass
-        if configs.optimizer_type == 'Adam':
+            optimizer = torch.optim.SGD(model.parameters(),
+                                        lr=configs.lr,
+                                        momentum=0.9,
+                                        weight_decay=configs.weight_decay)
+        elif configs.optimizer_type == 'Adam':
             optimizer = torch.optim.Adam(model.parameters(),
                                          lr=configs.lr,
                                          weight_decay=configs.weight_decay)
