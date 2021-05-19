@@ -27,7 +27,7 @@ class Trainer(nn.Module):
         if self._configs.multi_label > 1:
             loss = F.binary_cross_entropy_with_logits(output, target)
             with torch.no_grad():
-                output = F.sigmoid(output)
+                output = torch.sigmoid(output)
         else:
             loss = F.cross_entropy(output, target)
             with torch.no_grad():
