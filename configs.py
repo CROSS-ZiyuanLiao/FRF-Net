@@ -147,8 +147,8 @@ class Configs(object):
         # data loader settings
         self.train_batch_size = 128
         self.test_batch_size = 64
-        self.n_train_workers = 8
-        self.n_test_workers = 8
+        self.n_train_workers = 0
+        self.n_test_workers = 0
         self.train_pin_memory = True
         self.test_pin_memory = True
 
