@@ -7,11 +7,10 @@ class Trainer(nn.Module):
     """
     The trainer of the frf-net.
 
-    This should be instantiated like this:
-
-        trainer = Trainer(configs, model)
-            where configs is an instance of config.Configs and
-            model is an instance of fl_densenet.FullyLinearDenseNet.
+    Parameters
+    ----------
+    configs : Configs
+    model : FullyLinearDenseNet
 
     """
 
