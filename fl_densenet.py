@@ -10,31 +10,29 @@ class FullyLinearDenseNet(nn.Sequential):
     Parameters
     ----------
     in_features : int
-        number of input features
+        Number of input features
     out_classes : int
-        number of output classes
+        Number of output classes
     growth_rate : int
-        growth rate of the DenseNet
+        Growth rate of the DenseNet
     bottleneck_multiplier : int
-        size multiplier of the bottleneck layer,
+        Size multiplier of the bottleneck layer,
         the size of the bottleneck layer is bottleneck_multiplier * out_features
+    compression_factor : int
+        Compression factor of the transition layer
     drop_rate : float
-        probability of an element to be zeroed in dropout function
+        Probability of an element to be zeroed in dropout function
     block_config : array-like
-        number of dense layer in each dense block
-
-    Attributes
-    ----------
-
-    Examples
-    --------
+        Number of dense layer in each dense block
 
     """
 
-    # todo: docString
     def __init__(self, in_features, out_classes,
-                 growth_rate, bottleneck_multiplier,
-                 drop_rate, block_config):
+                 growth_rate=128,
+                 bottleneck_multiplier=4,
+                 compression_factor=3,
+                 drop_rate=0.5,
+                 block_config=(8, 16, 16, 12)):
         super(FullyLinearDenseNet, self).__init__()
         self.in_features = in_features
 
@@ -48,11 +46,10 @@ class FullyLinearDenseNet(nn.Sequential):
 
             # transition layer
             if i < (len(block_config) - 1):
-                compression = 3  # compression number
                 trans = _Transition(inter_features,
-                                    inter_features // compression)
+                                    inter_features // compression_factor)
                 self.add_module('transition%d' % (i + 1), trans)
-                inter_features = inter_features // compression
+                inter_features = inter_features // compression_factor
             else:
                 trans = _Transition(inter_features, out_classes)
                 self.add_module('global_transition', trans)
@@ -60,7 +57,6 @@ class FullyLinearDenseNet(nn.Sequential):
     def forward(self, x):
         x = x.reshape(-1, self.in_features)
         out = super(FullyLinearDenseNet, self).forward(x)
-        out = F.log_softmax(out, dim=1)
         return out
 
     @staticmethod
@@ -71,25 +67,27 @@ class FullyLinearDenseNet(nn.Sequential):
 
 
 class _DenseLayer(nn.Sequential):
-    def __init__(self, in_features, growth_rate, bottleneck_multiplier,
-                 drop_rate):
-        """
-        Dense layer of the FL-DenseNet.
+    """
+    Dense layer of the FL-DenseNet.
 
-        Parameters
-        ----------
-        in_features : int
-            number of the input features
-        growth_rate : int
-            growth rate of the DenseNet
-        bottleneck_multiplier : int
-            size multiplier of the bottleneck layer,
-            the size of the bottleneck layer is
-            bottleneck_multiplier * out_features
-        drop_rate : float
-            probability of an element to be zeroed in dropout function
+    Parameters
+    ----------
+    in_features : int
+        Number of the input features
+    growth_rate : int
+        Growth rate of the DenseNet
+    bottleneck_multiplier : int
+        Size multiplier of the bottleneck layer,
+        the size of the bottleneck layer is
+        bottleneck_multiplier * out_features
+    drop_rate : float
+        Probability of an element to be zeroed in dropout function
 
-        """
+    """
+
+    def __init__(self, in_features, growth_rate=128,
+                 bottleneck_multiplier=4,
+                 drop_rate=0.5):
         super(_DenseLayer, self).__init__()
         inter_features = bottleneck_multiplier * growth_rate
 
@@ -112,27 +110,28 @@ class _DenseLayer(nn.Sequential):
 
 
 class _DenseBlock(nn.Sequential):
-    def __init__(self, n_layers, in_features, growth_rate,
-                 bottleneck_multiplier, drop_rate):
-        """
-        Dense block of the FL-DenseNet.
+    """
+    Dense block of the FL-DenseNet.
 
-        Parameters
-        ----------
-        n_layers : int
-            number of dense layers in each dense block
-        in_features : int
-            number of the input features
-        growth_rate : int
-            growth rate of the DenseNet
-        bottleneck_multiplier : int
-            size multiplier of the bottleneck layer,
-            the size of the bottleneck layer is
-            bottleneck_multiplier * out_features
-        drop_rate : float
-            probability of an element to be zeroed in dropout function
+    Parameters
+    ----------
+    n_layers : int
+        Number of dense layers in each dense block
+    in_features : int
+        Number of the input features
+    growth_rate : int
+        Growth rate of the DenseNet
+    bottleneck_multiplier : int
+        Size multiplier of the bottleneck layer,
+        the size of the bottleneck layer is
+        bottleneck_multiplier * out_features
+    drop_rate : float
+        Probability of an element to be zeroed in dropout function
 
-        """
+    """
+
+    def __init__(self, n_layers, in_features, growth_rate=128,
+                 bottleneck_multiplier=4, drop_rate=0.5):
         super(_DenseBlock, self).__init__()
         for i in range(n_layers):
             layer = _DenseLayer(
@@ -142,18 +141,19 @@ class _DenseBlock(nn.Sequential):
 
 
 class _Transition(nn.Sequential):
+    """
+    Transition layer of the FL-DenseNet.
+
+    Parameters
+    ----------
+    in_features : int
+        Number of the input features
+    out_features : int
+        Number of the output features
+
+    """
+
     def __init__(self, in_features, out_features):
-        """
-        Transition layer of the FL-DenseNet.
-
-        Parameters
-        ----------
-        in_features : int
-            number of the input features
-        out_features : int
-            number of the output features
-
-        """
         super(_Transition, self).__init__()
         self.add_module('batch_norm', nn.BatchNorm1d(in_features))
         self.add_module('relu', nn.ReLU(inplace=True))
