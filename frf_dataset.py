@@ -5,7 +5,17 @@ from torch.utils.data.dataset import Dataset
 
 
 class FRFDataset(Dataset):
-    # TODO: write DocStrings
+    """
+    Data set of frequency response functions.
+
+    Parameters
+    ----------
+    configs : Configs (see configs.py)
+
+    split : str
+        'train' or 'test', specifying the usage of the data set.
+
+    """
     _SPLIT_LIST = ('train', 'test')
 
     def __init__(self, configs, split):

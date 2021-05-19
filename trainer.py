@@ -9,8 +9,8 @@ class Trainer(nn.Module):
 
     Parameters
     ----------
-    configs : Configs
-    model : FullyLinearDenseNet
+    configs : Configs (see configs.py)
+    model : FullyLinearDenseNet (see fl_densenet.py)
 
     """
 
