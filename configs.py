@@ -32,6 +32,8 @@ class Configs(object):
 
     multi_label : int
         Maximum number of leak pipe label(s) in each sample
+    rounding_threshold : float
+        Threshold for rounding output in multi-label task
 
     in_features : int
         Number of input features of the fully linear DenseNet
@@ -122,7 +124,7 @@ class Configs(object):
 
         # number of labels
         self.multi_label = 1
-        # TODO: rounding threshold
+        self.rounding_threshold = 0.5
 
         # architecture of the FL-DenseNet
         self.in_features = 800
