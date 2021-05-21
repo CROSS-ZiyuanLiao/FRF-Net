@@ -19,7 +19,8 @@ class FullyLinearDenseNet(nn.Sequential):
         Size multiplier of the bottleneck layer,
         the size of the bottleneck layer is bottleneck_multiplier * out_features
     compression_factor : int
-        Compression factor of the transition layer
+        Compression factor of the transition layer,
+        the out_features of trasition layer is in_features // compression_factor
     drop_rate : float
         Probability of an element to be zeroed in dropout function
     block_config : array-like
