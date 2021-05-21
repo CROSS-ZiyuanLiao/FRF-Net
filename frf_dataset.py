@@ -41,7 +41,7 @@ class FRFDataset(Dataset):
 
         # sample file list
         sample_file_list = os.listdir(data_dir)
-        if n_sample == -1:
+        if n_sample > 0:
             sample_file_list = sample_file_list[0: n_sample]
         self.sample_file_list = sample_file_list
 
@@ -63,7 +63,6 @@ class FRFDataset(Dataset):
             label_list = configs.label_list
 
             # read labels and data, transfer labels into target
-            # todo: support string label list ?
             if multi_label > 1:
                 labels = [int(float(item)) for item
                           in line.split(',')[0: multi_label]]

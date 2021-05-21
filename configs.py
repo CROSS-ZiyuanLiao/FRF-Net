@@ -26,9 +26,9 @@ class Configs(object):
         Test data name, automatically get form test_data_dir if not specified
 
     n_train_samples : int
-        Number of training samples, use all samples if -1
+        Number of training samples, use all samples if 0
     n_test_samples : int
-        Number of test samples, use all samples if -1
+        Number of test samples, use all samples if 0
 
     multi_label : int
         Maximum number of leak pipe label(s) in each sample
@@ -116,12 +116,13 @@ class Configs(object):
         self.test_data_dir = None
         self.test_data_name = None
 
-        # number of samples, use all samples if remains 'default'
-        self.n_train_samples = -1
-        self.n_test_samples = -1
+        # number of samples, use all samples if remains 0
+        self.n_train_samples = 0
+        self.n_test_samples = 0
 
         # number of labels
         self.multi_label = 1
+        # TODO: rounding threshold
 
         # architecture of the FL-DenseNet
         self.in_features = 800
@@ -184,6 +185,12 @@ class Configs(object):
             raise ValueError('Unknown Optimizer: \'{}\''
                              .format(self.optimizer_type))
 
+        if self.n_train_samples < 0:
+            raise ValueError('Number of train samples cannot be negative.')
+
+        if self.n_test_samples < 0:
+            raise ValueError('Number of test samples cannot be negative.')
+
         # use data directory if test data directory not specified
         if self.test_data_dir is None:
             self.test_data_dir = self.data_dir
@@ -229,12 +236,12 @@ class Configs(object):
         if self.data_dir != self.test_data_dir:
             logging_name = '{0}_TestOn_{1}'.format(logging_name,
                                                    self.test_data_name)
-        if self.n_train_samples is not None:
+        if self.n_train_samples > 0:
             logging_name = '{0}_num_train_{1:d}'.format(
                 logging_name,
                 int(self.n_train_samples)
             )
-        if self.n_test_samples is not None:
+        if self.n_test_samples > 0:
             logging_name = '{0}_num_test_{1:d}'.format(
                 logging_name,
                 int(self.n_test_samples)
@@ -250,7 +257,7 @@ class Configs(object):
         logger = logging.getLogger('log')
         logger.setLevel(logging.INFO)
 
-        handler = logging.FileHandler(self.logging_path, mode='a')
+        handler = logging.FileHandler(self.logging_path, mode='w')
         handler.setLevel(logging.INFO)
 
         formatter = logging.Formatter(
@@ -265,9 +272,9 @@ class Configs(object):
         # write log message
         logger.info('====== *** user config *** ======')
         logger.info(pformat(self.state_dict))
-        logger.info('========== *** end *** ==========')
+        logger.info('========== *** end *** ==========\n')
 
         # write console message
         print('====== *** user config *** ======')
         pprint(self.state_dict)
-        print('========== *** end *** ==========')
+        print('========== *** end *** ==========\n')
