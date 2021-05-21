@@ -306,7 +306,7 @@ class FRFNet(object):
             some_str = (' hamming_acc: {0:.3f}'
                         ' precision: {1:.3f}'
                         ' recall: {2:.3f}'.format(self._hamming_meter.average,
-                                                   precision, recall))
+                                                  precision, recall))
             msg_str.append(some_str)
             msg_str.append(' Loss {:.4f}\n'.format(
                 self._loss_meter.average
