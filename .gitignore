@@ -137,7 +137,8 @@ dmypy.json
 # log and predition directory
 log/
 pred/
+param/
 
 # ...
 *.pyc
-__pycache__/ 
+__pycache__/
