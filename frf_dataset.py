@@ -41,7 +41,7 @@ class FRFDataset(Dataset):
 
         # sample file list
         sample_file_list = os.listdir(data_dir)
-        if n_sample > 0:
+        if n_sample != 'all':
             sample_file_list = sample_file_list[0: n_sample]
         self.sample_file_list = sample_file_list
 

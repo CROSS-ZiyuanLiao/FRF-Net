@@ -26,9 +26,9 @@ class Configs(object):
         Test data name, automatically get form test_data_dir if not specified
 
     n_train_samples : int
-        Number of training samples, use all samples if 0
+        Number of training samples, use all samples if 'all'
     n_test_samples : int
-        Number of test samples, use all samples if 0
+        Number of test samples, use all samples if 'all'
 
     multi_label : int
         Maximum number of leak pipe label(s) in each sample
@@ -113,14 +113,15 @@ class Configs(object):
     def __init__(self, kwargs):
         # data directory
         self.data_dir = ''
+        self._data_name = None
 
         # specify this if test data in another directory is used
         self.test_data_dir = None
         self.test_data_name = None
 
         # number of samples, use all samples if remains 0
-        self.n_train_samples = 0
-        self.n_test_samples = 0
+        self.n_train_samples = 'all'
+        self.n_test_samples = 'all'
 
         # number of labels
         self.multi_label = 1
@@ -167,7 +168,7 @@ class Configs(object):
         self.plot_every = 30
 
         # parse inputs
-        self._parse_params(kwargs)
+        self.parse_params(kwargs)
 
     def _state_dict(self):
         return {k: getattr(self, k) for (k, _)
@@ -177,7 +178,7 @@ class Configs(object):
     def state_dict(self):
         return self._state_dict()
 
-    def _parse_params(self, kwargs):
+    def parse_params(self, kwargs):
         for (k, v) in kwargs.items():
             if k not in self.state_dict:
                 raise ValueError('Unknown Option: \'--{}\''.format(k))
@@ -186,12 +187,6 @@ class Configs(object):
         if self.optimizer_type not in self._OPTIMIZER_LIST:
             raise ValueError('Unknown Optimizer: \'{}\''
                              .format(self.optimizer_type))
-
-        if self.n_train_samples < 0:
-            raise ValueError('Number of train samples cannot be negative.')
-
-        if self.n_test_samples < 0:
-            raise ValueError('Number of test samples cannot be negative.')
 
         # use data directory if test data directory not specified
         if self.test_data_dir is None:
@@ -211,13 +206,37 @@ class Configs(object):
             sep = os.sep
             tokens = self.data_dir.split(sep=sep)
             if tokens[-1] == '':
-                self.kind = tokens[-2]
+                kind = tokens[-2]
             else:
-                self.kind = tokens[-1]
+                kind = tokens[-1]
+
+            self._data_name = kind
+
+            kind = '{0}_{1}_lr_{2}_nEpoch_{3}'.format(
+                self.optimizer_type,
+                kind, self.lr, self.n_epoch
+            )
+
+            if self.multi_label > 1:
+                kind = '{0}_multi_label_{1:d}'.format(kind,
+                                                      self.multi_label)
+
+            if self.n_train_samples != 'all':
+                kind = '{0}_num_train_{1:d}'.format(
+                    kind,
+                    int(self.n_train_samples)
+                )
+
+            self.kind = kind
 
         # automatically generate pipe label list if not specified
         if self.label_list is None:
             self.label_list = [(x + 1) for x in range(self.out_classes)]
+
+        if self.multi_label > 1:
+            self.top_k = ()
+        else:
+            self.rounding_threshold = 'NaN'
 
         # create log folder
         if not os.path.exists(self._LOG_FOLDER):
@@ -228,22 +247,13 @@ class Configs(object):
             os.mkdir(self._PRED_FOLDER)
 
         # arrange logging and predict file path
-        logging_name = '{0}{1}_{2}_lr_{3}'.format(self._LOG_PREFIX,
-                                                  self.optimizer_type,
-                                                  self.kind,
-                                                  self.lr)
-        if self.multi_label > 1:
-            logging_name = '{0}_multi_label_{1:d}'.format(logging_name,
-                                                          self.multi_label)
-        if self.data_dir != self.test_data_dir:
+        logging_name = self._LOG_PREFIX + self.kind
+
+        if self._data_name != self.test_data_name:
             logging_name = '{0}_TestOn_{1}'.format(logging_name,
                                                    self.test_data_name)
-        if self.n_train_samples > 0:
-            logging_name = '{0}_num_train_{1:d}'.format(
-                logging_name,
-                int(self.n_train_samples)
-            )
-        if self.n_test_samples > 0:
+
+        if self.n_test_samples != 'all':
             logging_name = '{0}_num_test_{1:d}'.format(
                 logging_name,
                 int(self.n_test_samples)
@@ -259,7 +269,10 @@ class Configs(object):
         logger = logging.getLogger('log')
         logger.setLevel(logging.INFO)
 
-        handler = logging.FileHandler(self.logging_path, mode='w')
+        if len(logger.handlers) != 0:
+            logger.handlers = []
+
+        handler = logging.FileHandler(self.logging_path, mode='a')
         handler.setLevel(logging.INFO)
 
         formatter = logging.Formatter(
@@ -271,12 +284,16 @@ class Configs(object):
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-        # write log message
+    def write_log_msg(self):
+        """Write log messages."""
+        logger = logging.getLogger('log')
+
         logger.info('====== *** user config *** ======')
         logger.info(pformat(self.state_dict))
         logger.info('========== *** end *** ==========\n')
 
-        # write console message
+    def write_console_msg(self):
+        """write console messages."""
         print('====== *** user config *** ======')
         pprint(self.state_dict)
         print('========== *** end *** ==========\n')

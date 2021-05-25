@@ -36,26 +36,14 @@ class FRFNet(object):
         model.apply(model.init_weights)
         self.model = model
 
-        # build data sets
-        self.train_dataset = FRFDataset(configs, 'train')
-        self.test_dataset = FRFDataset(configs, 'test')
-
         # build trainer
         self.trainer = Trainer(configs, model)
 
-        # build data loaders
-        self.train_data_loader = DataLoader(
-            self.train_dataset,
-            batch_size=configs.train_batch_size,
-            num_workers=configs.n_train_workers,
-            pin_memory=configs.train_pin_memory
-        )
-        self.test_data_loader = DataLoader(
-            self.test_dataset,
-            batch_size=configs.test_batch_size,
-            num_workers=configs.n_test_workers,
-            pin_memory=configs.test_pin_memory
-        )
+        # data set
+        self.train_dataset = None
+        self.test_dataset = None
+        self.train_data_loader = None
+        self.test_data_loader = None
 
         # move the model to GPU and then build optimizer
         if torch.cuda.is_available():
@@ -72,7 +60,26 @@ class FRFNet(object):
         self._fp_meter = _SumMeter()  # false positive
         self._fn_meter = _SumMeter()  # false negative
 
-        print('Construction complete\n')
+    def _build_data_loaders(self):
+        configs = self.configs
+
+        # build data sets
+        self.train_dataset = FRFDataset(configs, 'train')
+        self.test_dataset = FRFDataset(configs, 'test')
+
+        # build data loaders
+        self.train_data_loader = DataLoader(
+            self.train_dataset,
+            batch_size=configs.train_batch_size,
+            num_workers=configs.n_train_workers,
+            pin_memory=configs.train_pin_memory
+        )
+        self.test_data_loader = DataLoader(
+            self.test_dataset,
+            batch_size=configs.test_batch_size,
+            num_workers=configs.n_test_workers,
+            pin_memory=configs.test_pin_memory
+        )
 
     def _reset_meters(self):
         self._batch_time_meter.reset()
@@ -406,14 +413,24 @@ class FRFNet(object):
             # summary
             self._validate_write_summary(out_file)
 
-    def main_worker(self):
-        configs = self.configs
-
-        # define criterion for evaluation
-        if configs.multi_label > 1:
+    def _get_criterion(self):
+        if self.configs.multi_label > 1:
             criterion = torch.nn.BCEWithLogitsLoss()
         else:
             criterion = torch.nn.CrossEntropyLoss()
+        return criterion
+
+    def main_worker(self):
+        """Train and validate."""
+        configs = self.configs
+        configs.write_log_msg()
+        configs.write_console_msg()
+
+        self._build_data_loaders()
+        print('Construction complete\n')
+
+        # define criterion for evaluation
+        criterion = self._get_criterion()
 
         # training
         for epoch in range(configs.n_epoch):
@@ -423,6 +440,24 @@ class FRFNet(object):
 
         # validation
         self.validate(criterion)
+
+    def side_worker(self, param_path, test_data_dir):
+        """Load and validate."""
+        self.trainer.load(param_path, test_data_dir)
+
+        configs = self.configs
+        configs.write_log_msg()
+        configs.write_console_msg()
+
+        self._build_data_loaders()
+        print('Construction complete\n')
+
+        # validation
+        criterion = self._get_criterion()
+        self.validate(criterion)
+
+    def save_model(self):
+        self.trainer.save()
 
 
 class _AverageMeter(object):

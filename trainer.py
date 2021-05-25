@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,6 +15,9 @@ class Trainer(nn.Module):
     model : FullyLinearDenseNet (see fl_densenet.py)
 
     """
+
+    _PARAM_FOLDER = 'param'
+    _SUFFIX = '.pt'
 
     def __init__(self, configs, model):
         super(Trainer, self).__init__()
@@ -64,9 +69,32 @@ class Trainer(nn.Module):
         self._optimizer = optimizer
 
     def save(self):
-        # TODO: save model
-        pass
+        """Save model."""
+        save_dict = {
+            'model': self._model.state_dict(),
+            'configs': self._configs.state_dict,
+            'optimizer': self._optimizer.state_dict()
+        }
 
-    def load(self):
-        # TODO: load model
-        pass
+        save_name = self._configs.kind + self._SUFFIX
+        save_path = os.path.join(self._PARAM_FOLDER, save_name)
+
+        if not os.path.exists(self._PARAM_FOLDER):
+            os.mkdir(self._PARAM_FOLDER)
+
+        torch.save(save_dict, save_path)
+
+    def load(self, param_path, test_data_dir):
+        """Load model."""
+        load_dict = torch.load(param_path)
+        configs_dict = load_dict['configs']
+        configs_dict['test_data_dir'] = test_data_dir
+        configs_dict['test_data_name'] = None
+
+        # TODO: support test_batch_size, n_test_workers, and so on...
+        # now change it here, like
+        # configs_dict['n_test_workers'] = 0
+
+        self._model.load_state_dict(load_dict['model'])
+        self._configs.parse_params(configs_dict)
+        self._optimizer.load_state_dict(load_dict['optimizer'])
