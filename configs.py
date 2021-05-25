@@ -250,7 +250,7 @@ class Configs(object):
         logging_name = self._LOG_PREFIX + self.kind
 
         if self._data_name != self.test_data_name:
-            logging_name = '{0}_TestOn_{1}'.format(logging_name,
+            logging_name = '{0}_TestBy_{1}'.format(logging_name,
                                                    self.test_data_name)
 
         if self.n_test_samples != 'all':
