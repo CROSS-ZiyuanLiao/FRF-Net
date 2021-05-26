@@ -64,7 +64,7 @@ class FRFDataset(Dataset):
 
             # read labels and data, transfer labels into target
             if multi_label > 1:
-                labels = [int(float(item)) for item
+                labels = [item for item
                           in line.split(',')[0: multi_label]]
                 target = [0. for _ in range(configs.out_classes)]
                 for label in labels:
@@ -72,7 +72,7 @@ class FRFDataset(Dataset):
                         target[label_list.index(label)] = 1.
                 data = [float(item) for item in line.split(',')[multi_label:]]
             else:
-                label = int(float(line.split(',')[0]))
+                label = line.split(',')[0]
                 target = label_list.index(label)
                 data = [float(item) for item in line.split(',')[1:]]
 

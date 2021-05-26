@@ -65,7 +65,7 @@ class Configs(object):
     lr_decay_rate : float
         Learning rate decay factor, use 0.33 by default
 
-    label_list : list
+    label_list : str list
         List of pipe labels
 
     train_batch_size : int
@@ -231,7 +231,7 @@ class Configs(object):
 
         # automatically generate pipe label list if not specified
         if self.label_list is None:
-            self.label_list = [(x + 1) for x in range(self.out_classes)]
+            self.label_list = [str(x + 1) for x in range(self.out_classes)]
 
         if self.multi_label > 1:
             self.top_k = ()
