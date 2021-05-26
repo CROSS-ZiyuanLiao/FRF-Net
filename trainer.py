@@ -22,6 +22,7 @@ class Trainer(nn.Module):
                       'test_batch_size',
                       'n_test_workers',
                       'test_pin_memory',
+                      'top_k',
                       'plot_every')
 
     def __init__(self, configs, model):
