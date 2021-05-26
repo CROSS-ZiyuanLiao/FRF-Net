@@ -13,10 +13,46 @@ from trainer import Trainer
 
 
 class FRFNet(object):
-    """Not now."""
+    """
+    Extract features in FRF with FL-DenseNet.
 
-    # todo: write DocStrings
-    # todo: convert target into label in output messages
+    This should be instantiated like this:
+
+        frf_net = FRFNet(
+            data_dir='%MyDataDir%'
+            in_features=640,
+            out_classes=33,
+            label_list=['P1', 'P2', ..., 'P33']
+            kw1=arg1,
+            kw2=arg2,
+            ...
+        )
+
+        keywords data_dir, in_features and out_classes are mandatory
+
+        you can pass an empty string as data_dir if you are going to
+        load a pre-trained model
+
+        label_list should contains and only contains all possible labels,
+        if it is something just like
+        [str(x + 1) for x in range(self.out_classes)],
+        you can omit this keyword,
+        otherwise you should explicitly define it
+
+        see Configs in configs.py for more available keywords.
+
+    Attributes
+    ----------
+    configs : Configs (see configs.py)
+    model : FullyLinearDenseNet (see fl_densenet.py)
+    train_dataset : FRFDataset (see frf_dataset.py)
+    test_dataset : FRFDataset (see frf_dataset.py)
+    train_data_loader : DataLoader (in torch.utils.data.dataloader)
+    test_data_loader : DataLoader (in torch.utils.data.dataloader)
+    trainer : Trainer (see trainer.py)
+
+    """
+
     def __init__(self, **kwargs):
         print('Constructing model\n')
 
@@ -60,20 +96,19 @@ class FRFNet(object):
         self._fp_meter = _SumMeter()  # false positive
         self._fn_meter = _SumMeter()  # false negative
 
-    def _build_data_loaders(self):
+    def _build_train_data_loader(self):
         configs = self.configs
-
-        # build data sets
         self.train_dataset = FRFDataset(configs, 'train')
-        self.test_dataset = FRFDataset(configs, 'test')
-
-        # build data loaders
         self.train_data_loader = DataLoader(
             self.train_dataset,
             batch_size=configs.train_batch_size,
             num_workers=configs.n_train_workers,
             pin_memory=configs.train_pin_memory
         )
+
+    def _build_test_data_loader(self):
+        configs = self.configs
+        self.test_dataset = FRFDataset(configs, 'test')
         self.test_data_loader = DataLoader(
             self.test_dataset,
             batch_size=configs.test_batch_size,
@@ -245,6 +280,15 @@ class FRFNet(object):
         logger.info(''.join(log_str))
 
     def train(self, epoch):
+        """
+        Train the model.
+
+        Parameters
+        ----------
+        epoch : int
+            The current epoch number.
+
+        """
         print('epoch {}'.format(epoch + 1))
         configs = self.configs
         batch_size = configs.train_batch_size
@@ -346,6 +390,7 @@ class FRFNet(object):
 
     @torch.no_grad()
     def validate(self, criterion):
+        """Validate the model."""
         print('validating')
         configs = self.configs
         batch_size = configs.train_batch_size
@@ -426,7 +471,8 @@ class FRFNet(object):
         configs.write_log_msg()
         configs.write_console_msg()
 
-        self._build_data_loaders()
+        self._build_train_data_loader()
+        self._build_test_data_loader()
         print('Construction complete\n')
 
         # define criterion for evaluation
@@ -442,14 +488,29 @@ class FRFNet(object):
         self.validate(criterion)
 
     def side_worker(self, param_path, test_data_dir, **kwargs):
-        """Load and validate."""
+        """
+        Load model and validate.
+
+        Parameters
+        ----------
+        param_path : str
+            Path of the file that contains model parameters,
+            configs and optimizer
+        test_data_dir : str
+            Path of test data
+        **kwargs
+            These keyword arguments can change some test-related configs
+            before validation, for more details,
+            see Trainer.load in trainer.py
+
+        """
         self.trainer.load(param_path, test_data_dir, kwargs)
 
         configs = self.configs
         configs.write_log_msg()
         configs.write_console_msg()
 
-        self._build_data_loaders()
+        self._build_test_data_loader()
         print('Construction complete\n')
 
         # validation
@@ -457,6 +518,7 @@ class FRFNet(object):
         self.validate(criterion)
 
     def save_model(self):
+        """Save current model, configs and optimizer states."""
         self.trainer.save()
 
 
@@ -467,9 +529,9 @@ class _AverageMeter(object):
     Attributes
     ----------
     value : float
-        the current average value
+        The current average value
     average : float
-        the overall average value
+        The overall average value
 
     """
 
@@ -480,7 +542,7 @@ class _AverageMeter(object):
         self.average = 0.
 
     def reset(self):
-        """Reset the Average Meter."""
+        """Reset the average meter."""
         self.__init__()
 
     def update(self, value, increment=1):
@@ -490,9 +552,9 @@ class _AverageMeter(object):
         Parameters
         ----------
         value : float
-            the current average value
+            The current average value
         increment : int
-            increment of count value
+            Increment of count value
 
         """
         self.value = value
@@ -502,14 +564,35 @@ class _AverageMeter(object):
 
 
 class _SumMeter(object):
-    # TODO: DocStrings
+    """
+    Meters the current value and sum value.
+
+    Attributes
+    ----------
+    value : float
+        The current value
+    sum : float
+        The sum of all values
+
+    """
+
     def __init__(self):
         self.value = 0.
         self.sum = 0.
 
     def reset(self):
+        """Reset the sum meter."""
         self.__init__()
 
     def update(self, value):
+        """
+        Update the sum meter.
+
+        Parameters
+        ----------
+        value : float
+            the current value
+
+        """
         self.value = value
         self.sum += value

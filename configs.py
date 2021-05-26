@@ -20,14 +20,14 @@ class Configs(object):
     ----------
     data_dir : str
         Directory of the training dataset (and test dataset)
-    test_data_dir : str
+    test_data_dir : str (Optional)
         Test dataset directory, use data_dir if not specified
-    test_data_name : str
+    test_data_name : str (Optional)
         Test data name, automatically get form test_data_dir if not specified
 
-    n_train_samples : int
+    n_train_samples : int (Optional)
         Number of training samples, use all samples if 'all'
-    n_test_samples : int
+    n_test_samples : int (Optional)
         Number of test samples, use all samples if 'all'
 
     multi_label : int
@@ -40,65 +40,66 @@ class Configs(object):
     out_classes : int
         Number of output features of the fully linear DenseNet
 
-    growth_rate : int
+    growth_rate : int (Optional)
         Growth rate of dense blocks, use 128 by default
-    bottleneck_multiplier : int
+    bottleneck_multiplier : int (Optional)
         Bottleneck multiplier in every dense blocks, use 4 by default
-    compression_factor : int
+    compression_factor : int (Optional)
         compression factor of interval transition layers, use 3 by default
-    drop_rate : float
+    drop_rate : float (Optional)
         Drop rate in every dense blocks, use 0.5 by default
-    block_config : tuple (of int)
+    block_config : tuple (of int) (Optional)
         Layers in each dense block, use (8, 16, 16, 12) by default
 
-    kind : str
+    kind : str (Optional)
         The identifier used in output (i.e. log and predict) file names,
         automatically get form data_dir if not specified
 
-    optimizer_type : str
+    optimizer_type : str (Optional)
         Name of the optimizer used, now 'SGD' and 'Adam' are supported,
         use 'SGD' by default
-    lr : float
+    lr : float (Optional)
         Start learning rate of the optimizer, use 0.6 by default
-    weight_decay : float
+    weight_decay : float (Optional)
         Weight decay (L2 penalty) of the optimizer, use 5E-5 by default
-    lr_decay_rate : float
+    lr_decay_rate : float (Optional)
         Learning rate decay factor, use 0.33 by default
 
-    label_list : str list
+    label_list : str list (Optional)
         List of pipe labels
 
-    train_batch_size : int
+    train_batch_size : int (Optional)
         Mini-batch size for training set, use 128 by default
-    test_batch_size : int
+    test_batch_size : int (Optional)
         Mini-batch size for test set, use 64 by default
-    n_train_workers : int
+    n_train_workers : int (Optional)
         Number of workers for data loading during training,
         may use number of available CPU
-    n_test_workers : int
+    n_test_workers : int (Optional)
         Number of workers for data loading during testing,
         may use number of available CPU
-    train_pin_memory : bool
+    train_pin_memory : bool (Optional)
         Whether use pin-memory during train data loading, use True by default,
         if seeing freeze or swap used a lot, use False
-    test_pin_memory : bool
+    test_pin_memory : bool (Optional)
         Whether use pin-memory during test data loading, use True by default,
         if seeing freeze or swap used a lot, use False
 
-    n_epoch : int
+    n_epoch : int (Optional)
         Total epoch number, use 120 by default
-    lr_adjust_at : list (of int)
+    lr_adjust_at : list (of int) (Optional)
         Epochs where the learning rate are changed by multiplying
         lr_decay_rate, use (20, 40, 60, 80, 100) by default
 
-    logging_path : str
+    logging_path : str (Optional)
         Logging file path
-    predict_path : str
+    predict_path : str (Optional)
         Predict file path
-    top_k : tuple (of int)
+
+    top_k : tuple (of int) (Optional)
         Top k accuracy will be calculated for each k in top_k,
         use (1, 2, 3, 4, 5) by default
-    plot_every : int
+    plot_every : int (Optional)
         Interval of plotting training state in each epoch,
         use 30 by default
 
@@ -109,6 +110,7 @@ class Configs(object):
     _PRED_SUFFIX = '_predict.txt'
     _LOG_FOLDER = 'log'
     _PRED_FOLDER = 'pred'
+    _MANDATORY_KEYWORDS = ('data_dir', 'in_features', 'out_classes')
 
     def __init__(self, kwargs):
         # data directory
@@ -167,6 +169,11 @@ class Configs(object):
         self.top_k = (1, 2, 3, 4, 5)
         self.plot_every = 30
 
+        # check existence of mandatory arguments
+        for kw in self._MANDATORY_KEYWORDS:
+            if kw not in kwargs:
+                raise ValueError('Option \'{}\' is mandatory'.format(kw))
+
         # parse inputs
         self.parse_params(kwargs)
 
@@ -179,11 +186,14 @@ class Configs(object):
         return self._state_dict()
 
     def parse_params(self, kwargs):
+        """Parse keyword-argument pairs for Configs."""
+        # parse arguments
         for (k, v) in kwargs.items():
             if k not in self.state_dict:
                 raise ValueError('Unknown Option: \'--{}\''.format(k))
             setattr(self, k, v)
 
+        # check validity of optimizer_type
         if self.optimizer_type not in self._OPTIMIZER_LIST:
             raise ValueError('Unknown Optimizer: \'{}\''
                              .format(self.optimizer_type))
@@ -233,6 +243,7 @@ class Configs(object):
         if self.label_list is None:
             self.label_list = [str(x + 1) for x in range(self.out_classes)]
 
+        # disable option not used
         if self.multi_label > 1:
             self.top_k = ()
         else:
@@ -260,17 +271,19 @@ class Configs(object):
             )
 
         predict_name = logging_name + self._PRED_SUFFIX
-        self.predict_path = os.path.join(self._PRED_FOLDER, predict_name)
+        if self.predict_path is None:
+            self.predict_path = os.path.join(self._PRED_FOLDER, predict_name)
 
         logging_name = '{}.log'.format(logging_name)
-        self.logging_path = os.path.join(self._LOG_FOLDER, logging_name)
+        if self.logging_path is None:
+            self.logging_path = os.path.join(self._LOG_FOLDER, logging_name)
 
         # set logger
         logger = logging.getLogger('log')
         logger.setLevel(logging.INFO)
 
         if len(logger.handlers) != 0:
-            logger.handlers = []
+            logger.handlers = []  # reset handler list
 
         handler = logging.FileHandler(self.logging_path, mode='a')
         handler.setLevel(logging.INFO)
