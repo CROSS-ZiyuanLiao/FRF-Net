@@ -441,9 +441,9 @@ class FRFNet(object):
         # validation
         self.validate(criterion)
 
-    def side_worker(self, param_path, test_data_dir):
+    def side_worker(self, param_path, test_data_dir, **kwargs):
         """Load and validate."""
-        self.trainer.load(param_path, test_data_dir)
+        self.trainer.load(param_path, test_data_dir, kwargs)
 
         configs = self.configs
         configs.write_log_msg()

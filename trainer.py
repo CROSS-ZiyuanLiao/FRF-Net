@@ -18,6 +18,11 @@ class Trainer(nn.Module):
 
     _PARAM_FOLDER = 'param'
     _SUFFIX = '.pt'
+    _LOAD_KEYWORDS = ('n_test_samples',
+                      'test_batch_size',
+                      'n_test_workers',
+                      'test_pin_memory',
+                      'plot_every')
 
     def __init__(self, configs, model):
         super(Trainer, self).__init__()
@@ -84,16 +89,32 @@ class Trainer(nn.Module):
 
         torch.save(save_dict, save_path)
 
-    def load(self, param_path, test_data_dir):
-        """Load model."""
+    def load(self, param_path, test_data_dir, kwargs):
+        """
+        Load model.
+
+        Parameters
+        ----------
+        param_path : str
+            Path of the file that contains model parameters,
+            configs and optimizer
+        test_data_dir : str
+            Path of test data
+        kwargs : dict
+            Keyword-argument pairs,
+            available keyword are listed in self._LOAD_KEYWORDS,
+            for more details, see Configs in config.py
+
+        """
         load_dict = torch.load(param_path)
+
         configs_dict = load_dict['configs']
         configs_dict['test_data_dir'] = test_data_dir
         configs_dict['test_data_name'] = None
 
-        # TODO: support test_batch_size, n_test_workers, and so on...
-        # now change it here, like
-        # configs_dict['n_test_workers'] = 0
+        for key in self._LOAD_KEYWORDS:
+            if key in kwargs:
+                configs_dict[key] = kwargs[key]
 
         self._model.load_state_dict(load_dict['model'])
         self._configs.parse_params(configs_dict)
