@@ -18,8 +18,14 @@ class Configs(object):
 
     Attributes
     ----------
-    data_dir : str
+    data_dir : str (Optional)
         Directory of the training dataset (and test dataset)
+    data_name : str (Optional)
+        Automatically get form test_data_dir if not specified
+    kind : str (Optional)
+        The identifier used in output (i.e. log and predict) file names,
+        automatically get form data_dir if not specified
+
     test_data_dir : str (Optional)
         Test dataset directory, use data_dir if not specified
     test_data_name : str (Optional)
@@ -30,9 +36,9 @@ class Configs(object):
     n_test_samples : int (Optional)
         Number of test samples, use all samples if 'all'
 
-    multi_label : int
+    multi_label : int (Optional)
         Maximum number of leak pipe label(s) in each sample
-    rounding_threshold : float
+    rounding_threshold : float (Optional)
         Threshold for rounding output in multi-label task
 
     in_features : int
@@ -51,14 +57,10 @@ class Configs(object):
     block_config : tuple (of int) (Optional)
         Layers in each dense block, use (8, 16, 16, 12) by default
 
-    kind : str (Optional)
-        The identifier used in output (i.e. log and predict) file names,
-        automatically get form data_dir if not specified
-
     optimizer_type : str (Optional)
         Name of the optimizer used, now 'SGD' and 'Adam' are supported,
         use 'SGD' by default
-    lr : float (Optional)
+    initial_lr : float (Optional)
         Start learning rate of the optimizer, use 0.6 by default
     weight_decay : float (Optional)
         Weight decay (L2 penalty) of the optimizer, use 5E-5 by default
@@ -110,12 +112,13 @@ class Configs(object):
     _PRED_SUFFIX = '_predict.txt'
     _LOG_FOLDER = 'log'
     _PRED_FOLDER = 'pred'
-    _MANDATORY_KEYWORDS = ('data_dir', 'in_features', 'out_classes')
+    _MANDATORY_KEYWORDS = ('in_features', 'out_classes')
 
     def __init__(self, kwargs):
         # data directory
-        self.data_dir = ''
-        self._data_name = None
+        self.data_dir = 'default'
+        self.data_name = None
+        self.kind = None
 
         # specify this if test data in another directory is used
         self.test_data_dir = None
@@ -138,12 +141,9 @@ class Configs(object):
         self.drop_rate = 0.5
         self.block_config = (8, 16, 16, 12)
 
-        # kind
-        self.kind = None
-
         # optimizer
         self.optimizer_type = 'SGD'
-        self.lr = 0.6
+        self.initial_lr = 0.6
         self.weight_decay = 5E-5
         self.lr_decay_rate = 0.33
 
@@ -169,6 +169,8 @@ class Configs(object):
         self.top_k = (1, 2, 3, 4, 5)
         self.plot_every = 30
 
+        self._lr = 0.  # current learning rate
+
         # check existence of mandatory arguments
         for kw in self._MANDATORY_KEYWORDS:
             if kw not in kwargs:
@@ -185,9 +187,17 @@ class Configs(object):
     def state_dict(self):
         return self._state_dict()
 
+    @property
+    def lr(self):
+        return self._lr
+
+    @lr.setter
+    def lr(self, value):
+        self._lr = value
+
     def parse_params(self, kwargs):
         """Parse keyword-argument pairs for Configs."""
-        # parse arguments
+        # parse all input arguments
         for (k, v) in kwargs.items():
             if k not in self.state_dict:
                 raise ValueError('Unknown Option: \'--{}\''.format(k))
@@ -220,11 +230,11 @@ class Configs(object):
             else:
                 kind = tokens[-1]
 
-            self._data_name = kind
+            self.data_name = kind
 
             kind = '{0}_{1}_lr_{2}_nEpoch_{3}'.format(
                 self.optimizer_type,
-                kind, self.lr, self.n_epoch
+                kind, self.initial_lr, self.n_epoch
             )
 
             if self.multi_label > 1:
@@ -249,6 +259,9 @@ class Configs(object):
         else:
             self.rounding_threshold = 'NaN'
 
+        # set start learning rate
+        self.lr = self.initial_lr
+
         # create log folder
         if not os.path.exists(self._LOG_FOLDER):
             os.mkdir(self._LOG_FOLDER)
@@ -260,7 +273,7 @@ class Configs(object):
         # arrange logging and predict file path
         logging_name = self._LOG_PREFIX + self.kind
 
-        if self._data_name != self.test_data_name:
+        if self.data_name != self.test_data_name:
             logging_name = '{0}_TestBy_{1}'.format(logging_name,
                                                    self.test_data_name)
 
@@ -278,7 +291,7 @@ class Configs(object):
         if self.logging_path is None:
             self.logging_path = os.path.join(self._LOG_FOLDER, logging_name)
 
-        # set logger
+    def create_logger(self):
         logger = logging.getLogger('log')
         logger.setLevel(logging.INFO)
 

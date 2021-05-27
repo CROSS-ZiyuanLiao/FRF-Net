@@ -28,10 +28,9 @@ class FRFNet(object):
             ...
         )
 
-        keywords data_dir, in_features and out_classes are mandatory
+        keywords in_features and out_classes are mandatory
 
-        you can pass an empty string as data_dir if you are going to
-        load a pre-trained model
+        you can omit data_dir if you are going to load a pre-trained model
 
         label_list should contains and only contains all possible labels,
         if it is something just like
@@ -86,7 +85,7 @@ class FRFNet(object):
             self.trainer.cuda()
         self.trainer.get_optimizer()
 
-        # create meters
+    def _create_meters(self):
         self._batch_time_meter = _AverageMeter()  # batch elapsed time
         self._data_time_meter = _AverageMeter()  # data loading time
         self._loss_meter = _AverageMeter()  # loss value
@@ -115,17 +114,6 @@ class FRFNet(object):
             num_workers=configs.n_test_workers,
             pin_memory=configs.test_pin_memory
         )
-
-    def _reset_meters(self):
-        self._batch_time_meter.reset()
-        self._data_time_meter.reset()
-        self._loss_meter.reset()
-        for meter in self._top_k_meters:
-            meter.reset()
-        self._hamming_meter.reset()
-        self._tp_meter.reset()
-        self._fp_meter.reset()
-        self._fn_meter.reset()
 
     @staticmethod
     def _cal_accuracy(output, target, top_k=(1,)):
@@ -293,8 +281,8 @@ class FRFNet(object):
         configs = self.configs
         batch_size = configs.train_batch_size
 
-        # reset meters
-        self._reset_meters()
+        # create meters
+        self._create_meters()
 
         # switch to train mode
         self.model.train()
@@ -395,8 +383,8 @@ class FRFNet(object):
         configs = self.configs
         batch_size = configs.train_batch_size
 
-        # reset meters
-        self._reset_meters()
+        # create meters
+        self._create_meters()
 
         # switch to evaluation mode
         self.model.eval()
@@ -465,11 +453,15 @@ class FRFNet(object):
             criterion = torch.nn.CrossEntropyLoss()
         return criterion
 
-    def main_worker(self):
-        """Train and validate."""
+    def _write_msgs(self):
         configs = self.configs
+        configs.create_logger()
         configs.write_log_msg()
         configs.write_console_msg()
+
+    def train_and_validate(self):
+        """Train and validate."""
+        self._write_msgs()
 
         self._build_train_data_loader()
         self._build_test_data_loader()
@@ -479,23 +471,22 @@ class FRFNet(object):
         criterion = self._get_criterion()
 
         # training
-        for epoch in range(configs.n_epoch):
-            if (epoch + 1) in configs.lr_adjust_at:
+        for epoch in range(self.configs.n_epoch):
+            if (epoch + 1) in self.configs.lr_adjust_at:
                 self.trainer.adjust_lr()
             self.train(epoch)
 
         # validation
         self.validate(criterion)
 
-    def side_worker(self, param_path, test_data_dir, **kwargs):
+    def load_and_validate(self, param_path, test_data_dir, **kwargs):
         """
         Load model and validate.
 
         Parameters
         ----------
         param_path : str
-            Path of the file that contains model parameters,
-            configs and optimizer
+            Path of the file that contains model parameters and configs
         test_data_dir : str
             Path of test data
         **kwargs
@@ -505,10 +496,7 @@ class FRFNet(object):
 
         """
         self.trainer.load(param_path, test_data_dir, kwargs)
-
-        configs = self.configs
-        configs.write_log_msg()
-        configs.write_console_msg()
+        self._write_msgs()
 
         self._build_test_data_loader()
         print('Construction complete\n')
@@ -518,7 +506,7 @@ class FRFNet(object):
         self.validate(criterion)
 
     def save_model(self):
-        """Save current model, configs and optimizer states."""
+        """Save current model and configs."""
         self.trainer.save()
 
 

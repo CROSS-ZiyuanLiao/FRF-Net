@@ -18,12 +18,16 @@ class Trainer(nn.Module):
 
     _PARAM_FOLDER = 'param'
     _SUFFIX = '.pt'
-    _LOAD_KEYWORDS = ('n_test_samples',
+    _LOAD_KEYWORDS = ('test_data_name',
+                      'n_test_samples',
                       'test_batch_size',
                       'n_test_workers',
                       'test_pin_memory',
                       'top_k',
                       'plot_every')
+    _KEYWORDS_WITH_NONE = ('test_data_name',
+                           'logging_path',
+                           'predict_path')
 
     def __init__(self, configs, model):
         super(Trainer, self).__init__()
@@ -62,11 +66,13 @@ class Trainer(nn.Module):
         configs = self._configs
         model = self._model
 
+        optimizer = torch.optim.SGD(model.parameters(),
+                                    lr=configs.lr,
+                                    momentum=0.9,
+                                    weight_decay=configs.weight_decay)
+
         if configs.optimizer_type == 'SGD':
-            optimizer = torch.optim.SGD(model.parameters(),
-                                        lr=configs.lr,
-                                        momentum=0.9,
-                                        weight_decay=configs.weight_decay)
+            pass
         elif configs.optimizer_type == 'Adam':
             optimizer = torch.optim.Adam(model.parameters(),
                                          lr=configs.lr,
@@ -79,7 +85,6 @@ class Trainer(nn.Module):
         save_dict = {
             'model': self._model.state_dict(),
             'configs': self._configs.state_dict,
-            'optimizer': self._optimizer.state_dict()
         }
 
         save_name = self._configs.kind + self._SUFFIX
@@ -97,8 +102,7 @@ class Trainer(nn.Module):
         Parameters
         ----------
         param_path : str
-            Path of the file that contains model parameters,
-            configs and optimizer
+            Path of the file that contains model parameters and configs
         test_data_dir : str
             Path of test data
         kwargs : dict
@@ -113,10 +117,13 @@ class Trainer(nn.Module):
         configs_dict['test_data_dir'] = test_data_dir
         configs_dict['test_data_name'] = None
 
-        for key in self._LOAD_KEYWORDS:
-            if key in kwargs:
-                configs_dict[key] = kwargs[key]
+        for keyword in self._LOAD_KEYWORDS:
+            if keyword in kwargs:
+                configs_dict[keyword] = kwargs[keyword]
+
+        for keyword in self._KEYWORDS_WITH_NONE:
+            if keyword not in kwargs:
+                configs_dict[keyword] = None
 
         self._model.load_state_dict(load_dict['model'])
         self._configs.parse_params(configs_dict)
-        self._optimizer.load_state_dict(load_dict['optimizer'])

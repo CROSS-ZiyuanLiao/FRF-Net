@@ -25,13 +25,15 @@ class FRFDataset(Dataset):
         if split not in self._SPLIT_LIST:
             raise ValueError('Unknown split: \'{}\''.format(split))
 
+        data_dir = configs.data_dir
+        n_sample = configs.n_train_samples
+
         # train dataset
         if split == 'train':
-            data_dir = configs.data_dir
-            n_sample = configs.n_train_samples
+            pass
 
         # test dataset
-        if split == 'test':
+        elif split == 'test':
             data_dir = configs.test_data_dir
             n_sample = configs.n_test_samples
 
