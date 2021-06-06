@@ -70,7 +70,7 @@ class FRFDataset(Dataset):
                           in line.split(',')[0: multi_label]]
                 target = [0. for _ in range(configs.out_classes)]
                 for label in labels:
-                    if label != 0:
+                    if label != '0':
                         target[label_list.index(label)] = 1.
                 data = [float(item) for item in line.split(',')[multi_label:]]
             else:
