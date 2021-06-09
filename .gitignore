@@ -138,7 +138,3 @@ dmypy.json
 log/
 pred/
 param/
-
-# ...
-*.pyc
-__pycache__/
