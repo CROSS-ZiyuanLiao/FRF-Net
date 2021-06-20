@@ -222,8 +222,13 @@ class FRFNet(object):
             tp = self._tp_meter.value
             fp = self._fp_meter.value
             fn = self._fn_meter.value
-            precision = tp / (tp + fp)
-            recall = tp / (tp + fn)
+            if tp != 0:
+                precision = tp / (tp + fp)
+                recall = tp / (tp + fn)
+            else:
+                precision = 0
+                recall = 0
+
             msg_str.append(
                 'hamming_acc: {0:.3f} ({1:.3f})\t'
                 'precision: {2:.3f}\t'
@@ -251,8 +256,13 @@ class FRFNet(object):
             tp = self._tp_meter.value
             fp = self._fp_meter.value
             fn = self._fn_meter.value
-            precision = tp / (tp + fp)
-            recall = tp / (tp + fn)
+            if tp != 0:
+                precision = tp / (tp + fp)
+                recall = tp / (tp + fn)
+            else:
+                precision = 0
+                recall = 0
+
             log_str.append(
                 'hamming_acc: {0:.3f}\t'
                 'precision: {1:.3f}\t'
@@ -340,8 +350,13 @@ class FRFNet(object):
             tp = self._tp_meter.sum
             fp = self._fp_meter.sum
             fn = self._fn_meter.sum
-            precision = tp / (tp + fp)
-            recall = tp / (tp + fn)
+            if tp != 0:
+                precision = tp / (tp + fp)
+                recall = tp / (tp + fn)
+            else:
+                precision = 0
+                recall = 0
+
             some_str = (' hamming_acc: {0:.3f}'
                         ' precision: {1:.3f}'
                         ' recall: {2:.3f}'.format(self._hamming_meter.average,
